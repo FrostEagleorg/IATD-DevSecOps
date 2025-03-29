@@ -19,9 +19,9 @@ jobs:
           resourceGroup: devsecops-lab
           location: australiaeast
           targetPort: 5000
-    submit_results:
-    needs: [deploy]
-    if: true
+
+  submit_results_app:
+    needs: deploy
     runs-on: ubuntu-latest
     steps:
       - uses: azure/login@v1
@@ -36,21 +36,20 @@ jobs:
           inlineScript: |
             ACCESS_TOKEN=$(az account get-access-token | jq -r .accessToken)
             echo "azureAccessToken=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
-      - name: Upload reports
+
+      - name: Upload app report
         env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           AZURE_ACCESS_TOKEN: ${{ steps.token-gen.outputs.azureAccessToken }}
         run: |
           export FQDN=$(az containerapp show -n devops-app -g devsecops-lab --query properties.configuration.ingress.fqdn -o tsv)
           echo "FQDN: $FQDN"
           WEEK1_APP=$(curl -X POST -H "Authorization: Bearer $AZURE_ACCESS_TOKEN" -d "https://$FQDN" https://devsecops-ver.azurewebsites.net/api/week1-app)
           echo "Week1 app upload: $WEEK1_APP"
-   submit_results:
-    needs: [build]
-    if: true
+
+  submit_results_container:
+    needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -63,7 +62,8 @@ jobs:
           inlineScript: |
             ACCESS_TOKEN=$(az account get-access-token | jq -r .accessToken)
             echo "azureAccessToken=$ACCESS_TOKEN" >> "$GITHUB_OUTPUT"
-      - name: Upload reports
+
+      - name: Upload container report
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           AZURE_ACCESS_TOKEN: ${{ steps.token-gen.outputs.azureAccessToken }}
